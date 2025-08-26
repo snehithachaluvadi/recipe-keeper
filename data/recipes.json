@@ -1,0 +1,31 @@
+[
+    {
+        "id": "2025-08-26T23:55:16.670517",
+        "submitted_by": "trail",
+        "dish_name": "French Fries",
+        "ingredients": [
+            {
+                "name": "large potatoes",
+                "quantity": "3-4",
+                "unit": "pcs"
+            },
+            {
+                "name": "oil",
+                "quantity": "2",
+                "unit": "cup"
+            },
+            {
+                "name": "salt",
+                "quantity": "1/2",
+                "unit": "tsp"
+            },
+            {
+                "name": "peri peri",
+                "quantity": "ur choice ",
+                "unit": ""
+            }
+        ],
+        "instructions": "Peel & Cut the Potatoes\n\nPeel the potatoes (or keep the skin if you like rustic fries).\n\nSlice into even sticks about ¼ inch thick. Uniform size = even cooking.\n\nSoak the Potatoes\n\nPlace the cut fries in a bowl of cold water.\n\nSoak for at least 30 minutes (removes excess starch → crispier fries).\n\nDrain and pat completely dry with a clean kitchen towel.\n\nFirst Fry (Blanching)\n\nHeat oil in a deep pan to about 150°C (300°F).\n\nFry the potatoes in small batches for 4–5 minutes.\n\nThey should be soft but not browned.\n\nRemove and drain on paper towels.\n\nSecond Fry (Crisping)\n\nIncrease oil heat to 190°C (375°F).\n\nFry the blanched potatoes again for 2–3 minutes until golden and crispy.\n\nDrain excess oil on paper towels.\n\nSeason & Serve\n\nSprinkle salt (and any extra seasoning) immediately while hot.\n\nServe with ketchup, mayo, or any dip you like.",
+        "image_path": "data\\uploads\\20250826_235516_fries.jpg"
+    }
+]
