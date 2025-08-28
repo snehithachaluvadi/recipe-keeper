@@ -86,29 +86,25 @@ def main_app():
 
     tab1, tab2, tab3 = st.tabs(["**🍳 Submit Recipe**", "**📖 Community Cookbook**", "**📊 Dashboard**"])
 
-    # --- TAB 1: SUBMIT RECIPE (Using a Callback to fix the error) ---
+    # --- TAB 1: SUBMIT RECIPE ---
     with tab1:
-        # Define the callback function that will handle the submission logic
         def submit_recipe_callback():
-            # 1. Validate the inputs
             if not st.session_state.dish_name or not st.session_state.instructions or not st.session_state.ingredients:
                 st.warning("Please fill in Dish Name, Instructions, and add at least one ingredient.")
-                return  # Stop if validation fails
+                return
             
-            # 2. Process and save the data
-            image_path = save_uploaded_image(st.session_state.photo_uploader)
+            image_url = save_uploaded_image(st.session_state.photo_uploader)
             recipe_data = {
                 "id": datetime.now().isoformat(),
                 "submitted_by": st.session_state.username,
                 "dish_name": st.session_state.dish_name,
                 "ingredients": st.session_state.ingredients,
                 "instructions": st.session_state.instructions,
-                "image_path": image_path,
+                "image_path": image_url, # Changed variable name for clarity
             }
             save_recipe(recipe_data)
             st.success(f"Recipe '{st.session_state.dish_name}' submitted!")
 
-            # 3. Safely clear the form fields for the next entry
             st.session_state.dish_name = ""
             st.session_state.instructions = ""
             st.session_state.ingredients = []
@@ -158,11 +154,9 @@ def main_app():
             st.dataframe(pd.DataFrame(st.session_state.ingredients), use_container_width=True)
 
         st.markdown("---")
-
-        # The final submit button now uses the on_click callback to prevent the error
         st.button("✅ Submit Full Recipe", on_click=submit_recipe_callback)
 
-    # --- TAB 2: COMMUNITY COOKBOOK ---
+    # --- TAB 2: COMMUNITY COOKBOOK (CORRECTED IMAGE LOGIC) ---
     with tab2:
         st.header("Search and Explore Recipes")
         search_query = st.text_input("Search by dish name or ingredient", "")
@@ -186,9 +180,11 @@ def main_app():
                 with st.expander(f"**{recipe['dish_name']}** (by *{recipe['submitted_by']}*)"):
                     left, right = st.columns([1, 2])
                     with left:
-                        image_path = recipe.get("image_path")
-                        if image_path and os.path.exists(image_path):
-                            st.image(image_path)
+                        # ** THE REQUIRED CHANGE IS HERE **
+                        # We just check if the URL exists, not if the local path exists.
+                        image_url = recipe.get("image_path")
+                        if image_url:
+                            st.image(image_url)
                         else:
                             st.image("https://placehold.co/400x300?text=No+Image")
                     with right:
