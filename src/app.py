@@ -100,7 +100,7 @@ def main_app():
                 "dish_name": st.session_state.dish_name,
                 "ingredients": st.session_state.ingredients,
                 "instructions": st.session_state.instructions,
-                "image_path": image_url, # Changed variable name for clarity
+                "image_path": image_url,
             }
             save_recipe(recipe_data)
             st.success(f"Recipe '{st.session_state.dish_name}' submitted!")
@@ -108,7 +108,6 @@ def main_app():
             st.session_state.dish_name = ""
             st.session_state.instructions = ""
             st.session_state.ingredients = []
-            st.session_state.photo_uploader = None
 
         st.markdown("""
         <style>
@@ -156,7 +155,7 @@ def main_app():
         st.markdown("---")
         st.button("✅ Submit Full Recipe", on_click=submit_recipe_callback)
 
-    # --- TAB 2: COMMUNITY COOKBOOK (CORRECTED IMAGE LOGIC) ---
+    # --- TAB 2: COMMUNITY COOKBOOK (FINAL FIX) ---
     with tab2:
         st.header("Search and Explore Recipes")
         search_query = st.text_input("Search by dish name or ingredient", "")
@@ -180,12 +179,13 @@ def main_app():
                 with st.expander(f"**{recipe['dish_name']}** (by *{recipe['submitted_by']}*)"):
                     left, right = st.columns([1, 2])
                     with left:
-                        # ** THE REQUIRED CHANGE IS HERE **
-                        # We just check if the URL exists, not if the local path exists.
+                        # ** THE FINAL FIX IS HERE **
+                        # Check if image_url is not None AND it's a valid web URL
                         image_url = recipe.get("image_path")
-                        if image_url:
+                        if image_url and image_url.startswith("http"):
                             st.image(image_url)
                         else:
+                            # Show a placeholder for old local paths or missing images
                             st.image("https://placehold.co/400x300?text=No+Image")
                     with right:
                         st.subheader("🌿 Ingredients")
