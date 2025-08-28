@@ -2,5 +2,9 @@
     {
         "username": "trail",
         "password_hash": "aed7e01a3eb8634a524e8ca7bf0593391ad6a47abfaa89592457f9cc7bfad5bf"
+    },
+    {
+        "username": "navya",
+        "password_hash": "57a84ed47cef198ad723d7bd2db8e5988c2c3baf9716ed17adb3c65062d3bcc3"
     }
 ]

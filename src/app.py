@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import os
 from utils.db_utils import (
     save_recipe, load_recipes, save_uploaded_image,
     verify_user, save_user, get_ingredient_usage_graph
@@ -13,15 +14,19 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- AUTHENTICATION LOGIC ---
-
-# Initialize session state
+# --- AUTHENTICATION & SESSION STATE ---
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
 if 'page' not in st.session_state:
     st.session_state['page'] = 'login'
 if 'ingredients' not in st.session_state:
     st.session_state['ingredients'] = []
+if 'dish_name' not in st.session_state:
+    st.session_state['dish_name'] = ""
+if 'instructions' not in st.session_state:
+    st.session_state['instructions'] = ""
+if 'photo_uploader' not in st.session_state:
+    st.session_state['photo_uploader'] = None
 
 
 def login_page():
@@ -34,7 +39,7 @@ def login_page():
             if verify_user(username, password):
                 st.session_state['authenticated'] = True
                 st.session_state['username'] = username
-                st.rerun() # Rerun the script to show the main app
+                st.rerun()
             else:
                 st.error("Invalid username or password")
     
@@ -68,74 +73,94 @@ def signup_page():
 
 
 # --- MAIN APPLICATION ---
-
 def main_app():
     st.sidebar.title(f"Welcome, {st.session_state['username']}! 👋")
     st.sidebar.markdown("---")
     if st.sidebar.button("Logout"):
-        st.session_state['authenticated'] = False
-        st.session_state['page'] = 'login'
-        st.session_state.pop('username', None) # Clear username
-        st.session_state['ingredients'] = [] # Clear ingredients list
+        for key in st.session_state.keys():
+            del st.session_state[key]
         st.rerun()
 
     st.title("🍲 Recipe Keeper")
     st.markdown("Your digital space for family culinary traditions.")
 
-    tab1, tab2, tab3 = st.tabs(["🍳 Submit Recipe*", "📖 Community Cookbook", "📊 Dashboard*"])
+    tab1, tab2, tab3 = st.tabs(["**🍳 Submit Recipe**", "**📖 Community Cookbook**", "**📊 Dashboard**"])
 
-    # --- TAB 1: SUBMIT RECIPE ---
+    # --- TAB 1: SUBMIT RECIPE (Using a Callback to fix the error) ---
     with tab1:
+        # Define the callback function that will handle the submission logic
+        def submit_recipe_callback():
+            # 1. Validate the inputs
+            if not st.session_state.dish_name or not st.session_state.instructions or not st.session_state.ingredients:
+                st.warning("Please fill in Dish Name, Instructions, and add at least one ingredient.")
+                return  # Stop if validation fails
+            
+            # 2. Process and save the data
+            image_path = save_uploaded_image(st.session_state.photo_uploader)
+            recipe_data = {
+                "id": datetime.now().isoformat(),
+                "submitted_by": st.session_state.username,
+                "dish_name": st.session_state.dish_name,
+                "ingredients": st.session_state.ingredients,
+                "instructions": st.session_state.instructions,
+                "image_path": image_path,
+            }
+            save_recipe(recipe_data)
+            st.success(f"Recipe '{st.session_state.dish_name}' submitted!")
+
+            # 3. Safely clear the form fields for the next entry
+            st.session_state.dish_name = ""
+            st.session_state.instructions = ""
+            st.session_state.ingredients = []
+            st.session_state.photo_uploader = None
+
+        st.markdown("""
+        <style>
+        .stButton > button {
+            width: 100%; border-radius: 10px; border: 1px solid rgba(49, 51, 63, 0.2);
+            background-color: #FFFFFF; color: #31333F; transition: all 0.2s ease-in-out;
+        }
+        .stButton > button:hover { border-color: #FF4B4B; color: #FF4B4B; }
+        .stButton > button:focus { border-color: #FF4B4B; color: #FF4B4B; box-shadow: none; }
+        </style>
+        """, unsafe_allow_html=True)
+        
         st.header("Add a New Recipe")
-        with st.form(key="recipe_form", clear_on_submit=True):
-            dish_name = st.text_input("Dish Name*")
-            uploaded_photo = st.file_uploader("Upload a Photo", type=["jpg", "png", "jpeg"])
-            instructions = st.text_area("Instructions*")
-            
-            st.markdown("---")
-            st.subheader("Add Ingredients")
+        
+        st.text_input("Dish Name*", key="dish_name")
+        st.file_uploader("Upload a Photo", type=["jpg", "png", "jpeg"], key="photo_uploader")
+        st.text_area("Instructions*", key="instructions", height=200)
 
-            # Ingredient input fields
-            col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
-            with col1:
-                ing_name = st.text_input("Ingredient Name", key="ing_name")
-            with col2:
-                ing_qty = st.text_input("Quantity", key="ing_qty")
-            with col3:
-                ing_unit = st.selectbox("Unit", ["", "g", "kg", "ml", "l", "tsp", "tbsp", "cup", "pcs"], key="ing_unit")
-            with col4:
-                # Use a button to add to the session state list
-                add_ingredient = st.form_submit_button("Add")
-
-            # Logic to add ingredient to the list in session state
-            if add_ingredient and ing_name:
+        st.markdown("---")
+        
+        st.subheader("Add Ingredients")
+        
+        col1, col2, col3 = st.columns([2.5, 1.5, 1])
+        ing_name = col1.text_input("Ingredient Name", placeholder="Ingredient Name", label_visibility="collapsed")
+        ing_qty = col2.text_input("Quantity", placeholder="Quantity", label_visibility="collapsed")
+        ing_unit = col3.selectbox("Unit", ["", "g", "kg", "ml", "l", "tsp", "tbsp", "cup", "pcs"], label_visibility="collapsed")
+        
+        col_add, col_remove = st.columns(2)
+        if col_add.button("Add Ingredient"):
+            if ing_name:
                 st.session_state.ingredients.append({"name": ing_name, "quantity": ing_qty, "unit": ing_unit})
-            
-            # Display current ingredients
+                st.rerun()
+            else:
+                st.warning("Ingredient name cannot be empty.")
+        
+        if col_remove.button("Remove Last Ingredient"):
             if st.session_state.ingredients:
-                st.write("Current Ingredients:")
-                current_ingredients_df = pd.DataFrame(st.session_state.ingredients)
-                st.dataframe(current_ingredients_df, use_container_width=True)
+                st.session_state.ingredients.pop()
+                st.rerun()
 
-            st.markdown("---")
-            final_submit_button = st.form_submit_button(label="✅ Submit Full Recipe")
+        if st.session_state.ingredients:
+            st.write("Current Ingredients:")
+            st.dataframe(pd.DataFrame(st.session_state.ingredients), use_container_width=True)
 
-            if final_submit_button:
-                if not dish_name or not instructions or not st.session_state.ingredients:
-                    st.warning("Please fill in Dish Name, Instructions, and add at least one ingredient.")
-                else:
-                    image_path = save_uploaded_image(uploaded_photo)
-                    recipe_data = {
-                        "id": datetime.now().isoformat(),
-                        "submitted_by": st.session_state['username'],
-                        "dish_name": dish_name,
-                        "ingredients": st.session_state.ingredients,
-                        "instructions": instructions,
-                        "image_path": image_path,
-                    }
-                    save_recipe(recipe_data)
-                    st.success(f"Recipe '{dish_name}' submitted!")
-                    st.session_state.ingredients = [] # Clear for next recipe
+        st.markdown("---")
+
+        # The final submit button now uses the on_click callback to prevent the error
+        st.button("✅ Submit Full Recipe", on_click=submit_recipe_callback)
 
     # --- TAB 2: COMMUNITY COOKBOOK ---
     with tab2:
@@ -144,18 +169,12 @@ def main_app():
         
         all_recipes = load_recipes()
         
-        # Filtering logic
         filtered_recipes = []
         if search_query:
             query = search_query.lower()
             for recipe in all_recipes:
-                # Check dish name
-                if query in recipe['dish_name'].lower():
-                    filtered_recipes.append(recipe)
-                    continue
-                # Check ingredients
-                ing_match = any(query in item['name'].lower() for item in recipe.get('ingredients', []))
-                if ing_match:
+                if query in recipe['dish_name'].lower() or \
+                   any(query in item['name'].lower() for item in recipe.get('ingredients', [])):
                     filtered_recipes.append(recipe)
         else:
             filtered_recipes = all_recipes
@@ -164,17 +183,17 @@ def main_app():
             st.info("No recipes found. Try a different search or add a new recipe!")
         else:
             for recipe in reversed(filtered_recipes):
-                with st.expander(f"{recipe['dish_name']}** (by {recipe['submitted_by']})"):
+                with st.expander(f"**{recipe['dish_name']}** (by *{recipe['submitted_by']}*)"):
                     left, right = st.columns([1, 2])
                     with left:
-                        if recipe.get("image_path"):
-                            st.image(recipe["image_path"])
+                        image_path = recipe.get("image_path")
+                        if image_path and os.path.exists(image_path):
+                            st.image(image_path)
                         else:
                             st.image("https://placehold.co/400x300?text=No+Image")
                     with right:
                         st.subheader("🌿 Ingredients")
-                        ing_df = pd.DataFrame(recipe.get('ingredients', []))
-                        st.dataframe(ing_df, hide_index=True)
+                        st.dataframe(pd.DataFrame(recipe.get('ingredients', [])), hide_index=True)
                     
                     st.subheader("📖 Instructions")
                     st.markdown(recipe["instructions"])
@@ -186,18 +205,19 @@ def main_app():
         
         ingredient_usage = get_ingredient_usage_graph()
         
-        if ingredient_usage is not None:
+        if ingredient_usage is not None and not ingredient_usage.empty:
             st.subheader("Most Popular Ingredients")
             st.bar_chart(ingredient_usage)
         else:
             st.info("Not enough data to display a graph. Add more recipes!")
 
 # --- ROUTING LOGIC ---
-if not st.session_state['authenticated']:
+if not st.session_state.get('authenticated', False):
     st.warning("🔒 This is a demo application. Do not use real passwords.")
-    if st.session_state['page'] == 'login':
+    page = st.session_state.get('page', 'login')
+    if page == 'login':
         login_page()
-    elif st.session_state['page'] == 'signup':
+    elif page == 'signup':
         signup_page()
 else:
     main_app()
