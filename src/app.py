@@ -74,7 +74,7 @@ def signup_page():
 
 # --- MAIN APPLICATION ---
 def main_app():
-    st.sidebar.title(f"Welcome, {st.session_state['username']}! 👋")
+    st.sidebar.title(f"Welcome, {st.session_state.get('username', '')}! 👋")
     st.sidebar.markdown("---")
     if st.sidebar.button("Logout"):
         for key in st.session_state.keys():
@@ -155,7 +155,7 @@ def main_app():
         st.markdown("---")
         st.button("✅ Submit Full Recipe", on_click=submit_recipe_callback)
 
-    # --- TAB 2: COMMUNITY COOKBOOK (FINAL FIX) ---
+    # --- TAB 2: COMMUNITY COOKBOOK ---
     with tab2:
         st.header("Search and Explore Recipes")
         search_query = st.text_input("Search by dish name or ingredient", "")
@@ -166,8 +166,10 @@ def main_app():
         if search_query:
             query = search_query.lower()
             for recipe in all_recipes:
-                if query in recipe['dish_name'].lower() or \
-                   any(query in item['name'].lower() for item in recipe.get('ingredients', [])):
+                if isinstance(recipe, dict) and query in recipe.get('dish_name', '').lower():
+                    filtered_recipes.append(recipe)
+                    continue
+                if isinstance(recipe, dict) and any(query in item.get('name', '').lower() for item in recipe.get('ingredients', [])):
                     filtered_recipes.append(recipe)
         else:
             filtered_recipes = all_recipes
@@ -176,31 +178,34 @@ def main_app():
             st.info("No recipes found. Try a different search or add a new recipe!")
         else:
             for recipe in reversed(filtered_recipes):
-                with st.expander(f"**{recipe['dish_name']}** (by *{recipe['submitted_by']}*)"):
-                    left, right = st.columns([1, 2])
-                    with left:
-                        # ** THE FINAL FIX IS HERE **
-                        # Check if image_url is not None AND it's a valid web URL
-                        image_url = recipe.get("image_path")
-                        if image_url and image_url.startswith("http"):
-                            st.image(image_url)
-                        else:
-                            # Show a placeholder for old local paths or missing images
-                            st.image("https://placehold.co/400x300?text=No+Image")
-                    with right:
-                        st.subheader("🌿 Ingredients")
-                        st.dataframe(pd.DataFrame(recipe.get('ingredients', [])), hide_index=True)
-                    
-                    st.subheader("📖 Instructions")
-                    st.markdown(recipe["instructions"])
+                if isinstance(recipe, dict):
+                    dish_name = recipe.get('dish_name', 'Untitled Recipe')
+                    submitted_by = recipe.get('submitted_by', 'Unknown User')
 
-    # --- TAB 3: DASHBOARD ---
+                    with st.expander(f"**{dish_name}** (by *{submitted_by}*)"):
+                        left, right = st.columns([1, 2])
+                        with left:
+                            image_url = recipe.get("image_path")
+                            if image_url and image_url.startswith("http"):
+                                st.image(image_url)
+                            else:
+                                st.image("https://placehold.co/400x300?text=No+Image")
+                        with right:
+                            st.subheader("🌿 Ingredients")
+                            st.dataframe(pd.DataFrame(recipe.get('ingredients', [])), hide_index=True)
+                        
+                        st.subheader("📖 Instructions")
+                        st.markdown(recipe.get("instructions", "No instructions provided."))
+
+    # --- TAB 3: DASHBOARD (CORRECTED LOGIC) ---
     with tab3:
         st.header("Recipe Dashboard")
         st.markdown("Here are some analytics on the community's recipes.")
         
         ingredient_usage = get_ingredient_usage_graph()
         
+        # ** THE REQUIRED CHANGE IS HERE **
+        # Correctly check if the DataFrame is not None and not empty
         if ingredient_usage is not None and not ingredient_usage.empty:
             st.subheader("Most Popular Ingredients")
             st.bar_chart(ingredient_usage)
